@@ -37,6 +37,21 @@ const (
 	sniffLen = 512
 )
 
+// FileServer returns a handler that serves HTTP requests
+// with the contents of the file system rooted at root.
+//
+// As a special case, the returned file server redirects any request
+// ending in "/index.html" to the same path, without the final
+// "index.html".
+//
+// To use the operating system's file system implementation,
+// use [http.Dir]:
+//
+//	http.Handle("/", http.FileServer(http.Dir("/tmp")))
+//
+// This has been modified from the implementation found
+// in stdlib's net/http to allow for custom markup
+// instead of the hardcoded markup.
 func FileServer(
 	root http.FileSystem,
 	errHandler func(http.ResponseWriter, *http.Request, int),
@@ -49,6 +64,7 @@ func FileServer(
 	}
 }
 
+// FileEntry contains metadata for a file found in a filesystem.
 type FileEntry struct {
 	URL  string
 	Name string
@@ -312,7 +328,7 @@ func (h *fileHandler) serveContent(w http.ResponseWriter, r *http.Request, name 
 	w.WriteHeader(code)
 
 	if r.Method != http.MethodHead {
-		io.CopyN(w, sendContent, sendSize)
+		io.CopyN(w, sendContent, sendSize) //nolint:errcheck
 	}
 }
 

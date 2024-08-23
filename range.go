@@ -132,7 +132,7 @@ func rangesMIMESize(ranges []httpRange, contentType string, contentSize int64) i
 	mw := multipart.NewWriter(&w)
 
 	for _, ra := range ranges {
-		mw.CreatePart(ra.mimeHeader(contentType, contentSize))
+		mw.CreatePart(ra.mimeHeader(contentType, contentSize)) //nolint:errcheck
 		encSize += ra.length
 	}
 
