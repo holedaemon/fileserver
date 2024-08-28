@@ -13,7 +13,7 @@ import (
 func TestFileServer(t *testing.T) {
 	fs := FileServer(
 		http.Dir("./testdata"),
-		func(w http.ResponseWriter, r *http.Request, i int) {
+		func(w http.ResponseWriter, r *http.Request, i int, _ error) {
 			http.Error(w, http.StatusText(i), i)
 		},
 		func(w http.ResponseWriter, r *http.Request, fe []FileEntry) {

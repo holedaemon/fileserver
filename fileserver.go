@@ -47,14 +47,14 @@ const (
 // To use the operating system's file system implementation,
 // use [http.Dir]:
 //
-//	http.Handle("/", http.FileServer(http.Dir("/tmp")))
+//	http.Handle("/", FileServer(http.Dir("/tmp")))
 //
 // This has been modified from the implementation found
 // in stdlib's net/http to allow for custom markup
 // instead of the hardcoded markup.
 func FileServer(
 	root http.FileSystem,
-	errHandler func(http.ResponseWriter, *http.Request, int),
+	errHandler func(http.ResponseWriter, *http.Request, int, error),
 	dirListHandler func(http.ResponseWriter, *http.Request, []FileEntry),
 ) *fileHandler {
 	return &fileHandler{
@@ -72,7 +72,7 @@ type FileEntry struct {
 
 type fileHandler struct {
 	root           http.FileSystem
-	errHandler     func(http.ResponseWriter, *http.Request, int)
+	errHandler     func(http.ResponseWriter, *http.Request, int, error)
 	dirListHandler func(http.ResponseWriter, *http.Request, []FileEntry)
 }
 
@@ -96,7 +96,7 @@ func (h *fileHandler) serveFile(w http.ResponseWriter, r *http.Request, fs http.
 	f, err := fs.Open(name)
 	if err != nil {
 		code := toHTTPError(err)
-		h.errHandler(w, r, code)
+		h.errHandler(w, r, code, err)
 		return
 	}
 
@@ -105,7 +105,7 @@ func (h *fileHandler) serveFile(w http.ResponseWriter, r *http.Request, fs http.
 	d, err := f.Stat()
 	if err != nil {
 		code := toHTTPError(err)
-		h.errHandler(w, r, code)
+		h.errHandler(w, r, code, err)
 		return
 	}
 
@@ -204,7 +204,7 @@ func (h *fileHandler) dirList(w http.ResponseWriter, r *http.Request, f http.Fil
 	}
 
 	if err != nil {
-		h.errHandler(w, r, http.StatusInternalServerError)
+		h.errHandler(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	sort.Slice(dirs, func(i, j int) bool { return dirs.name(i) < dirs.name(j) })
@@ -231,7 +231,7 @@ func (h *fileHandler) serveContent(w http.ResponseWriter, r *http.Request, name 
 			ctype = http.DetectContentType(buf[:n])
 			_, err := content.Seek(0, io.SeekStart)
 			if err != nil {
-				h.errHandler(w, r, http.StatusInternalServerError)
+				h.errHandler(w, r, http.StatusInternalServerError, err)
 				return
 			}
 		}
@@ -242,12 +242,12 @@ func (h *fileHandler) serveContent(w http.ResponseWriter, r *http.Request, name 
 
 	size, err := sizeFunc()
 	if err != nil {
-		h.errHandler(w, r, http.StatusInternalServerError)
+		h.errHandler(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
 	if size < 0 {
-		h.errHandler(w, r, http.StatusInternalServerError)
+		h.errHandler(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -265,7 +265,7 @@ func (h *fileHandler) serveContent(w http.ResponseWriter, r *http.Request, name 
 		w.Header().Set("Content-Range", fmt.Sprintf("bytes */%d", size))
 		fallthrough
 	default:
-		h.errHandler(w, r, http.StatusRequestedRangeNotSatisfiable)
+		h.errHandler(w, r, http.StatusRequestedRangeNotSatisfiable, err)
 		return
 	}
 
@@ -278,7 +278,7 @@ func (h *fileHandler) serveContent(w http.ResponseWriter, r *http.Request, name 
 		ra := ranges[0]
 
 		if _, err := content.Seek(ra.start, io.SeekStart); err != nil {
-			h.errHandler(w, r, http.StatusRequestedRangeNotSatisfiable)
+			h.errHandler(w, r, http.StatusRequestedRangeNotSatisfiable, err)
 			return
 		}
 
